@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ICA Services - Rating vs Satisfaction Matrix</title>
+    <title>ICA Services Matrix - Volume vs Satisfaction</title>
     <style>
         :root { color-scheme: light; }
         body {
@@ -46,7 +46,7 @@
             font-weight: bold;
             color: #333333;
         }
-        .control-group select {
+        .control-group select, .control-group input {
             padding: 6px 10px;
             font-size: 13px;
             border: 1px solid #CCCCCC;
@@ -127,8 +127,8 @@
 <body>
 
 <div class="header">
-    <h1>ICA Services: Rating vs Satisfaction Matrix</h1>
-    <div class="subtitle">Shows relationship between average rating (1-6) and satisfaction percentage - Click points for details</div>
+    <h1>ICA Services: Volume vs Satisfaction Matrix</h1>
+    <div class="subtitle">Interactive visualization - Hover over points for details, click to see more information</div>
 </div>
 
 <div class="controls">
@@ -136,20 +136,26 @@
         <label>Filter by Quadrant:</label>
         <select id="quadrantFilter">
             <option value="all">All Services</option>
-            <option value="excellent">Excellent (High Rating, High Sat)</option>
-            <option value="inconsistent">Inconsistent (High Rating, Low Sat)</option>
-            <option value="critical">Critical (Low Rating, Low Sat)</option>
-            <option value="needs-work">Needs Work (Low Rating, High Sat)</option>
+            <option value="priority">Priority (High Vol, Low Sat)</option>
+            <option value="maintain">Maintain (High Vol, High Sat)</option>
+            <option value="monitor">Monitor (Low Vol, Low Sat)</option>
+            <option value="observe">Observe (Low Vol, High Sat)</option>
         </select>
     </div>
     <div class="control-group">
         <label>Min Responses:</label>
         <select id="minResponseFilter">
-            <option value="0">All (≥100)</option>
+            <option value="0">All</option>
+            <option value="100">≥100</option>
             <option value="500">≥500</option>
             <option value="1000">≥1,000</option>
             <option value="2000">≥2,000</option>
         </select>
+    </div>
+    <div class="control-group">
+        <label>
+            <input type="checkbox" id="showLabels" checked> Show Labels
+        </label>
     </div>
 </div>
 
@@ -158,23 +164,23 @@
 </div>
 
 <div class="legend">
-    <div class="legend-title">Quadrant Interpretation:</div>
+    <div class="legend-title">Quadrant Legend:</div>
     <div class="legend-items">
         <div class="legend-item">
-            <span class="legend-color" style="background: #008800;"></span>
-            <strong>Excellent:</strong> High Rating (≥3.5) + High Satisfaction (≥50%) - Service performing well
-        </div>
-        <div class="legend-item">
-            <span class="legend-color" style="background: #F59E0B;"></span>
-            <strong>Inconsistent:</strong> High Rating (≥3.5) + Low Satisfaction (<50%) - Bimodal distribution
-        </div>
-        <div class="legend-item">
             <span class="legend-color" style="background: #CC0000;"></span>
-            <strong>Critical:</strong> Low Rating (<3.5) + Low Satisfaction (<50%) - Needs improvement
+            <strong>Priority:</strong> High Volume, Low Satisfaction (needs attention)
+        </div>
+        <div class="legend-item">
+            <span class="legend-color" style="background: #008800;"></span>
+            <strong>Maintain:</strong> High Volume, High Satisfaction (keep performing)
+        </div>
+        <div class="legend-item">
+            <span class="legend-color" style="background: #404040;"></span>
+            <strong>Monitor:</strong> Low Volume, Low Satisfaction (watch trends)
         </div>
         <div class="legend-item">
             <span class="legend-color" style="background: #0066CC;"></span>
-            <strong>Needs Work:</strong> Low Rating (<3.5) + High Satisfaction (≥50%) - Unusual pattern
+            <strong>Observe:</strong> Low Volume, High Satisfaction (stable)
         </div>
     </div>
 </div>
@@ -185,12 +191,12 @@
 </div>
 
 <div class="source">
-    Data: 20,812 responses from ICA WOGAA (Jan 2025 - Nov 2026) | 18 services shown (≥100 responses) | 25 total services
+    Data: 20,812 responses from ICA WOGAA (Jan 2025 - Nov 2026) | 25 services shown | Excludes: Landing Page, Cargo Clearance, Error Page, Access Denied, Apply IC Rereg + Apply PP
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
 <script>
-// Service data - UPDATED
+// Service data - UPDATED (ALL 25 services)
 const servicesData = [
     { name: 'eCOA', total: 4243, sat: 26.7, avg: 2.64, comments: 3028 },
     { name: 'SOLAR+', total: 3800, sat: 68.4, avg: 4.65, comments: 548 },
@@ -200,57 +206,66 @@ const servicesData = [
     { name: 'SAVE Apply Visa', total: 1959, sat: 50.7, avg: 3.83, comments: 637 },
     { name: 'Passport Resubmit', total: 1143, sat: 28.5, avg: 2.99, comments: 680 },
     { name: 'Appointment Booking', total: 586, sat: 25.3, avg: 2.69, comments: 350 },
-    { name: 'Apply IC Rereg', total: 426, sat: 22.3, avg: 2.55, comments: 281 },
+    { name: 'Apply IC Rereg', total: 426, sat: 22.3, avg: 2.55, comments: 280 },
     { name: 'Apply IC Reg', total: 314, sat: 18.8, avg: 2.44, comments: 195 },
     { name: 'IC Resubmit', total: 229, sat: 21.4, avg: 2.66, comments: 154 },
-    { name: 'Enquiry Status', total: 218, sat: 47.7, avg: 3.67, comments: 80 },
+    { name: 'Enquiry Status', total: 218, sat: 47.7, avg: 3.67, comments: 71 },
     { name: 'APEC Card', total: 216, sat: 6.5, avg: 1.88, comments: 177 },
     { name: 'IC Loss', total: 209, sat: 29.2, avg: 3.03, comments: 106 },
     { name: 'IC Change', total: 170, sat: 22.4, avg: 2.63, comments: 88 },
     { name: 'Birth Death Extract', total: 140, sat: 23.6, avg: 2.71, comments: 72 },
     { name: 'Birth Death Cert', total: 137, sat: 46.0, avg: 3.64, comments: 57 },
-    { name: 'MyICA Dashboard', total: 104, sat: 76.9, avg: 4.93, comments: 20 }
+    { name: 'MyICA Dashboard', total: 104, sat: 76.9, avg: 4.93, comments: 20 },
+    { name: 'Report Passport Damage', total: 57, sat: 24.6, avg: 2.53, comments: 39 },
+    { name: 'Apply PR', total: 52, sat: 0.0, avg: 2.79, comments: 9 },
+    { name: 'Doc of Identity', total: 31, sat: 32.3, avg: 3.32, comments: 14 },
+    { name: 'Report Passport Loss', total: 23, sat: 26.1, avg: 2.87, comments: 6 },
+    { name: 'Apply Birth Death', total: 3, sat: 100.0, avg: 5.33, comments: 1 },
+    { name: 'Temp Travel Doc', total: 1, sat: 100.0, avg: 6.0, comments: 0 },
+    { name: 'SafeTravel', total: 1, sat: 100.0, avg: 6.0, comments: 0 }
 ];
 
-// Thresholds
-const midRating = 3.5;
+// Calculate max and midpoints
+const maxVolume = Math.max(...servicesData.map(s => s.total));
+const midVolume = maxVolume / 2;
 const midSatisfaction = 50;
 
-// Determine quadrant
-function getQuadrant(rating, sat) {
-    if (rating >= midRating && sat >= midSatisfaction) return 'excellent';
-    if (rating >= midRating && sat < midSatisfaction) return 'inconsistent';
-    if (rating < midRating && sat < midSatisfaction) return 'critical';
-    return 'needs-work';
+// Determine quadrant for each service
+function getQuadrant(vol, sat) {
+    if (vol > midVolume && sat < midSatisfaction) return 'priority';
+    if (vol > midVolume && sat >= midSatisfaction) return 'maintain';
+    if (vol <= midVolume && sat < midSatisfaction) return 'monitor';
+    return 'observe';
 }
 
 function getQuadrantColor(quadrant) {
     const colors = {
-        excellent: '#008800',
-        inconsistent: '#F59E0B',
-        critical: '#CC0000',
-        'needs-work': '#0066CC'
+        priority: '#CC0000',
+        maintain: '#008800',
+        monitor: '#404040',
+        observe: '#0066CC'
     };
     return colors[quadrant];
 }
 
-// Chart setup
+// Prepare chart data
 let currentFilter = 'all';
 let currentMinResponse = 0;
+let showLabels = true;
 
 function prepareChartData() {
     let filtered = servicesData.filter(s => s.total >= currentMinResponse);
 
     if (currentFilter !== 'all') {
-        filtered = filtered.filter(s => getQuadrant(s.avg, s.sat) === currentFilter);
+        filtered = filtered.filter(s => getQuadrant(s.total, s.sat) === currentFilter);
     }
 
     return filtered.map(s => {
-        const quadrant = getQuadrant(s.avg, s.sat);
+        const quadrant = getQuadrant(s.total, s.sat);
         return {
-            x: s.avg,
+            x: s.total,
             y: s.sat,
-            r: Math.sqrt(s.total) / 3,
+            r: 8,
             service: s,
             quadrant: quadrant,
             color: getQuadrantColor(quadrant)
@@ -258,6 +273,7 @@ function prepareChartData() {
     });
 }
 
+// Create chart
 const ctx = document.getElementById('matrixChart').getContext('2d');
 let chartInstance;
 
@@ -270,40 +286,37 @@ const quadrantPlugin = {
         const xAxis = chart.scales.x;
         const yAxis = chart.scales.y;
 
-        const midX = xAxis.getPixelForValue(midRating);
+        const midX = xAxis.getPixelForValue(midVolume);
         const midY = yAxis.getPixelForValue(midSatisfaction);
 
         ctx.save();
 
-        // Bottom-left: Critical
-        ctx.fillStyle = 'rgba(204, 0, 0, 0.05)';
+        // Top-left: Monitor (Low Vol, Low Sat)
+        ctx.fillStyle = 'rgba(64, 64, 64, 0.05)';
         ctx.fillRect(chartArea.left, midY, midX - chartArea.left, chartArea.bottom - midY);
 
-        // Bottom-right: Inconsistent
-        ctx.fillStyle = 'rgba(245, 158, 11, 0.05)';
+        // Top-right: Priority (High Vol, Low Sat)
+        ctx.fillStyle = 'rgba(204, 0, 0, 0.05)';
         ctx.fillRect(midX, midY, chartArea.right - midX, chartArea.bottom - midY);
 
-        // Top-left: Needs Work
+        // Bottom-left: Observe (Low Vol, High Sat)
         ctx.fillStyle = 'rgba(0, 102, 204, 0.05)';
         ctx.fillRect(chartArea.left, chartArea.top, midX - chartArea.left, midY - chartArea.top);
 
-        // Top-right: Excellent
+        // Bottom-right: Maintain (High Vol, High Sat)
         ctx.fillStyle = 'rgba(0, 136, 0, 0.05)';
         ctx.fillRect(midX, chartArea.top, chartArea.right - midX, midY - chartArea.top);
 
         // Labels
         ctx.font = '12px Calibri';
         ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-        ctx.textAlign = 'center';
+        ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
 
-        const labelY = chartArea.top + 10;
-        ctx.fillText('Needs Work', (chartArea.left + midX) / 2, labelY);
-        ctx.fillText('Excellent', (midX + chartArea.right) / 2, labelY);
-
-        const labelY2 = midY + 10;
-        ctx.fillText('Critical', (chartArea.left + midX) / 2, labelY2);
-        ctx.fillText('Inconsistent', (midX + chartArea.right) / 2, labelY2);
+        ctx.fillText('Low Vol, High Sat', chartArea.left + 10, chartArea.top + 10);
+        ctx.fillText('High Vol, High Sat', midX + 10, chartArea.top + 10);
+        ctx.fillText('Low Vol, Low Sat', chartArea.left + 10, midY + 10);
+        ctx.fillText('High Vol, Low Sat', midX + 10, midY + 10);
 
         ctx.restore();
     }
@@ -347,12 +360,12 @@ function createChart() {
                         label: function(context) {
                             const s = context.raw.service;
                             return [
-                                'Avg Rating: ' + s.avg + ' / 6.0',
-                                'Satisfaction: ' + s.sat + '%',
                                 'Total Responses: ' + s.total.toLocaleString(),
+                                'Satisfaction: ' + s.sat + '%',
+                                'Avg Rating: ' + s.avg + ' / 6.0',
                                 'Comments: ' + s.comments.toLocaleString(),
                                 '',
-                                'Category: ' + context.raw.quadrant.toUpperCase(),
+                                'Quadrant: ' + context.raw.quadrant.toUpperCase(),
                                 '',
                                 'Click for details'
                             ];
@@ -364,16 +377,13 @@ function createChart() {
                 x: {
                     title: {
                         display: true,
-                        text: 'Average Rating (1-6 scale)',
+                        text: 'Response Volume',
                         font: { size: 15, weight: 'bold' },
                         color: '#000000'
                     },
-                    min: 1,
-                    max: 6,
                     ticks: {
                         font: { size: 12 },
-                        color: '#666666',
-                        stepSize: 0.5
+                        color: '#666666'
                     },
                     grid: {
                         color: 'rgba(0, 0, 0, 0.08)'
@@ -413,7 +423,7 @@ function createChart() {
 }
 
 function showServiceDetails(service) {
-    const quadrant = getQuadrant(service.avg, service.sat);
+    const quadrant = getQuadrant(service.total, service.sat);
     const panel = document.getElementById('statsPanel');
     const title = document.getElementById('statsTitle');
     const content = document.getElementById('statsContent');
@@ -423,28 +433,19 @@ function showServiceDetails(service) {
     const dissatisfied = Math.round(service.total * (100 - service.sat) / 100);
     const satisfied = service.total - dissatisfied;
 
-    let interpretation = '';
-    if (quadrant === 'excellent') {
-        interpretation = 'This service is performing well with both high ratings and high satisfaction.';
-    } else if (quadrant === 'inconsistent') {
-        interpretation = 'Users give moderate-to-high ratings but satisfaction is low - suggests bimodal distribution (some love it, some hate it).';
-    } else if (quadrant === 'critical') {
-        interpretation = 'Both ratings and satisfaction are low - this service needs significant improvement.';
-    } else {
-        interpretation = 'Low average rating but high satisfaction - unusual pattern worth investigating.';
-    }
-
     content.innerHTML = `
         <strong>Performance Metrics:</strong><br>
-        • Average Rating: ${service.avg} / 6.0<br>
-        • Satisfaction Rate: ${service.sat}% (${satisfied.toLocaleString()} satisfied)<br>
         • Total Responses: ${service.total.toLocaleString()}<br>
+        • Satisfaction Rate: ${service.sat}% (${satisfied.toLocaleString()} satisfied)<br>
+        • Dissatisfaction Rate: ${(100 - service.sat).toFixed(1)}% (${dissatisfied.toLocaleString()} dissatisfied)<br>
+        • Average Rating: ${service.avg} / 6.0<br>
         • Feedback Comments: ${service.comments.toLocaleString()}<br>
         <br>
-        <strong>Category:</strong> ${quadrant.toUpperCase().replace('-', ' ')}<br>
+        <strong>Quadrant Classification:</strong><br>
+        • ${quadrant.charAt(0).toUpperCase() + quadrant.slice(1)}<br>
         <br>
-        <strong>Interpretation:</strong><br>
-        ${interpretation}
+        <strong>Volume Position:</strong> ${service.total > midVolume ? 'Above' : 'Below'} median (${midVolume.toFixed(0)})<br>
+        <strong>Satisfaction Position:</strong> ${service.sat >= midSatisfaction ? 'Above' : 'Below'} 50% threshold
     `;
 
     panel.classList.add('active');
@@ -460,6 +461,11 @@ document.getElementById('quadrantFilter').addEventListener('change', function(e)
 document.getElementById('minResponseFilter').addEventListener('change', function(e) {
     currentMinResponse = parseInt(e.target.value);
     createChart();
+});
+
+document.getElementById('showLabels').addEventListener('change', function(e) {
+    showLabels = e.target.checked;
+    // Label display would require a plugin - keeping simple for now
 });
 
 // Initialize
