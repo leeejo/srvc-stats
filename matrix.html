@@ -3,15 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ICA Services Matrix - Volume vs Satisfaction</title>
+    <title>ICA Services: Volume vs Satisfaction Matrix</title>
     <style>
         :root { color-scheme: light; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Calibri', 'Arial', sans-serif;
             margin: 0;
             padding: 20px;
             background: #ffffff;
             color: #000000;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
         }
         .header {
             text-align: center;
@@ -46,12 +51,21 @@
             font-weight: bold;
             color: #333333;
         }
-        .control-group select, .control-group input {
+        select {
             padding: 6px 10px;
             font-size: 13px;
             border: 1px solid #CCCCCC;
             border-radius: 4px;
             background: white;
+        }
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
         }
         .chart-container {
             position: relative;
@@ -62,6 +76,10 @@
             border-radius: 8px;
             padding: 20px;
             box-sizing: border-box;
+        }
+        canvas {
+            width: 100% !important;
+            height: 100% !important;
         }
         .legend {
             margin-top: 20px;
@@ -94,26 +112,34 @@
             border: 2px solid white;
             box-shadow: 0 0 3px rgba(0,0,0,0.3);
         }
-        .stats-panel {
+        .detail-section {
             margin-top: 20px;
             padding: 15px;
             background: #F0F8FF;
             border: 1px solid #B0D4F1;
             border-radius: 6px;
-            display: none;
         }
-        .stats-panel.active {
-            display: block;
+        .service-detail {
+            background: transparent;
+            padding: 0;
         }
-        .stats-title {
-            font-weight: bold;
+        .service-detail h2 {
             font-size: 16px;
+            font-weight: bold;
             margin-bottom: 10px;
             color: #003D7A;
         }
-        .stats-content {
+        .detail-content {
             font-size: 13px;
             line-height: 1.6;
+        }
+        .detail-row {
+            margin-bottom: 8px;
+        }
+        .detail-label {
+            font-weight: bold;
+            display: inline-block;
+            min-width: 180px;
         }
         .source {
             margin-top: 15px;
@@ -125,352 +151,581 @@
     </style>
 </head>
 <body>
-
-<div class="header">
-    <h1>ICA Services: Volume vs Satisfaction Matrix</h1>
-    <div class="subtitle">Interactive visualization - Hover over points for details, click to see more information</div>
-</div>
-
-<div class="controls">
-    <div class="control-group">
-        <label>Filter by Quadrant:</label>
-        <select id="quadrantFilter">
-            <option value="all">All Services</option>
-            <option value="priority">Priority (High Vol, Low Sat)</option>
-            <option value="maintain">Maintain (High Vol, High Sat)</option>
-            <option value="monitor">Monitor (Low Vol, Low Sat)</option>
-            <option value="observe">Observe (Low Vol, High Sat)</option>
-        </select>
-    </div>
-    <div class="control-group">
-        <label>Min Responses:</label>
-        <select id="minResponseFilter">
-            <option value="0">All</option>
-            <option value="100">≥100</option>
-            <option value="500">≥500</option>
-            <option value="1000">≥1,000</option>
-            <option value="2000">≥2,000</option>
-        </select>
-    </div>
-    <div class="control-group">
-        <label>
-            <input type="checkbox" id="showLabels" checked> Show Labels
-        </label>
-    </div>
-</div>
-
-<div class="chart-container">
-    <canvas id="matrixChart"></canvas>
-</div>
-
-<div class="legend">
-    <div class="legend-title">Quadrant Legend:</div>
-    <div class="legend-items">
-        <div class="legend-item">
-            <span class="legend-color" style="background: #CC0000;"></span>
-            <strong>Priority:</strong> High Volume, Low Satisfaction (needs attention)
+    <div class="container">
+        <div class="header">
+            <h1>ICA Services: Volume vs Satisfaction Matrix</h1>
+            <div class="subtitle">Interactive visualization - Hover over points for details, click to see more information</div>
         </div>
-        <div class="legend-item">
-            <span class="legend-color" style="background: #008800;"></span>
-            <strong>Maintain:</strong> High Volume, High Satisfaction (keep performing)
+
+        <div class="controls">
+            <div class="control-group">
+                <label>Filter by Quadrant:</label>
+                <select id="quadrantFilter">
+                    <option value="all">All Services</option>
+                    <option value="priority">Priority (High Vol, Low Sat)</option>
+                    <option value="maintain">Maintain (High Vol, High Sat)</option>
+                    <option value="monitor">Monitor (Low Vol, Low Sat)</option>
+                    <option value="observe">Observe (Low Vol, High Sat)</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>Min Responses:</label>
+                <select id="minResponseFilter">
+                    <option value="0">All</option>
+                    <option value="100">≥100</option>
+                    <option value="500">≥500</option>
+                    <option value="1000">≥1,000</option>
+                    <option value="2000">≥2,000</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>
+                    <input type="checkbox" id="showLabels" checked> Show Labels
+                </label>
+            </div>
         </div>
-        <div class="legend-item">
-            <span class="legend-color" style="background: #404040;"></span>
-            <strong>Monitor:</strong> Low Volume, Low Satisfaction (watch trends)
+
+        <div class="chart-container">
+            <canvas id="scatterChart"></canvas>
         </div>
-        <div class="legend-item">
-            <span class="legend-color" style="background: #0066CC;"></span>
-            <strong>Observe:</strong> Low Volume, High Satisfaction (stable)
+
+        <div class="legend">
+            <div class="legend-title">Quadrant Legend:</div>
+            <div class="legend-items">
+                <div class="legend-item">
+                    <span class="legend-color" style="background: #CC0000;"></span>
+                    <strong>Priority:</strong> High Volume, Low Satisfaction (needs attention)
+                </div>
+                <div class="legend-item">
+                    <span class="legend-color" style="background: #008800;"></span>
+                    <strong>Maintain:</strong> High Volume, High Satisfaction (keep performing)
+                </div>
+                <div class="legend-item">
+                    <span class="legend-color" style="background: #404040;"></span>
+                    <strong>Monitor:</strong> Low Volume, Low Satisfaction (watch trends)
+                </div>
+                <div class="legend-item">
+                    <span class="legend-color" style="background: #0066CC;"></span>
+                    <strong>Observe:</strong> Low Volume, High Satisfaction (stable)
+                </div>
+            </div>
+        </div>
+
+        <div class="detail-section" id="serviceDetail">
+            <div class="service-detail">
+                <h2 id="detailServiceName">Apply PP</h2>
+                <div class="detail-content" id="detailContent"></div>
+            </div>
+        </div>
+
+        <div class="source">
+            Data: 20,812 responses from ICA WOGAA (Jan 2025 - Nov 2026) | 25 services shown | Excludes: Landing Page, Cargo Clearance, Error Page, Access Denied, Apply IC Rereg + Apply PP
         </div>
     </div>
-</div>
 
-<div id="statsPanel" class="stats-panel">
-    <div class="stats-title" id="statsTitle">Service Details</div>
-    <div class="stats-content" id="statsContent"></div>
-</div>
-
-<div class="source">
-    Data: 20,812 responses from ICA WOGAA (Jan 2025 - Nov 2026) | 25 services shown | Excludes: Landing Page, Cargo Clearance, Error Page, Access Denied, Apply IC Rereg + Apply PP
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
-<script>
-// Service data - UPDATED (ALL 25 services)
-const servicesData = [
-    { name: 'eCOA', total: 4243, sat: 26.7, avg: 2.64, comments: 3028 },
-    { name: 'SOLAR+', total: 3800, sat: 68.4, avg: 4.65, comments: 548 },
-    { name: 'STVP Extension', total: 2545, sat: 65.0, avg: 4.48, comments: 1107 },
-    { name: 'Apply PP', total: 2149, sat: 28.2, avg: 2.83, comments: 1142 },
-    { name: 'SOLAR', total: 2056, sat: 60.4, avg: 4.38, comments: 477 },
-    { name: 'SAVE Apply Visa', total: 1959, sat: 50.7, avg: 3.83, comments: 637 },
-    { name: 'Passport Resubmit', total: 1143, sat: 28.5, avg: 2.99, comments: 680 },
-    { name: 'Appointment Booking', total: 586, sat: 25.3, avg: 2.69, comments: 350 },
-    { name: 'Apply IC Rereg', total: 426, sat: 22.3, avg: 2.55, comments: 280 },
-    { name: 'Apply IC Reg', total: 314, sat: 18.8, avg: 2.44, comments: 195 },
-    { name: 'IC Resubmit', total: 229, sat: 21.4, avg: 2.66, comments: 154 },
-    { name: 'Enquiry Status', total: 218, sat: 47.7, avg: 3.67, comments: 71 },
-    { name: 'APEC Card', total: 216, sat: 6.5, avg: 1.88, comments: 177 },
-    { name: 'IC Loss', total: 209, sat: 29.2, avg: 3.03, comments: 106 },
-    { name: 'IC Change', total: 170, sat: 22.4, avg: 2.63, comments: 88 },
-    { name: 'Birth Death Extract', total: 140, sat: 23.6, avg: 2.71, comments: 72 },
-    { name: 'Birth Death Cert', total: 137, sat: 46.0, avg: 3.64, comments: 57 },
-    { name: 'MyICA Dashboard', total: 104, sat: 76.9, avg: 4.93, comments: 20 },
-    { name: 'Report Passport Damage', total: 57, sat: 24.6, avg: 2.53, comments: 39 },
-    { name: 'Apply PR', total: 52, sat: 0.0, avg: 2.79, comments: 9 },
-    { name: 'Doc of Identity', total: 31, sat: 32.3, avg: 3.32, comments: 14 },
-    { name: 'Report Passport Loss', total: 23, sat: 26.1, avg: 2.87, comments: 6 },
-    { name: 'Apply Birth Death', total: 3, sat: 100.0, avg: 5.33, comments: 1 },
-    { name: 'Temp Travel Doc', total: 1, sat: 100.0, avg: 6.0, comments: 0 },
-    { name: 'SafeTravel', total: 1, sat: 100.0, avg: 6.0, comments: 0 }
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+    <script>
+        const servicesData = [
+  {
+    "name": "APEC Business Travel Card",
+    "total": 216,
+    "sat": 6.5,
+    "avg": 1.88,
+    "completion": 4.4,
+    "comments": 174,
+    "satisfied": 14,
+    "dissatisfied": 202
+  },
+  {
+    "name": "Apply Birth Death",
+    "total": 3,
+    "sat": 100,
+    "avg": 5.33,
+    "completion": 100,
+    "comments": 0,
+    "satisfied": 3,
+    "dissatisfied": 0
+  },
+  {
+    "name": "Apply IC Reg",
+    "total": 314,
+    "sat": 18.8,
+    "avg": 2.44,
+    "completion": 12.4,
+    "comments": 193,
+    "satisfied": 59,
+    "dissatisfied": 255
+  },
+  {
+    "name": "Apply IC Rereg",
+    "total": 426,
+    "sat": 22.3,
+    "avg": 2.55,
+    "completion": 15.4,
+    "comments": 261,
+    "satisfied": 95,
+    "dissatisfied": 331
+  },
+  {
+    "name": "Apply PP",
+    "total": 2149,
+    "sat": 28.2,
+    "avg": 2.83,
+    "completion": 20.3,
+    "comments": 400,
+    "satisfied": 607,
+    "dissatisfied": 1542
+  },
+  {
+    "name": "Apply PR",
+    "total": 52,
+    "sat": 0,
+    "avg": 2.79,
+    "completion": 0,
+    "comments": 9,
+    "satisfied": 0,
+    "dissatisfied": 52
+  },
+  {
+    "name": "Apply for Document of Identity",
+    "total": 31,
+    "sat": 32.3,
+    "avg": 3.32,
+    "completion": 35.7,
+    "comments": 13,
+    "satisfied": 10,
+    "dissatisfied": 21
+  },
+  {
+    "name": "Apply for Temporary Travel Document",
+    "total": 1,
+    "sat": 100,
+    "avg": 6,
+    "completion": 0,
+    "comments": 0,
+    "satisfied": 1,
+    "dissatisfied": 0
+  },
+  {
+    "name": "Appointment Booking",
+    "total": 586,
+    "sat": 25.3,
+    "avg": 2.69,
+    "completion": 20.7,
+    "comments": 200,
+    "satisfied": 148,
+    "dissatisfied": 438
+  },
+  {
+    "name": "Birth Death Cert",
+    "total": 137,
+    "sat": 46,
+    "avg": 3.64,
+    "completion": 42.6,
+    "comments": 44,
+    "satisfied": 63,
+    "dissatisfied": 74
+  },
+  {
+    "name": "Birth Death Extracts",
+    "total": 140,
+    "sat": 23.6,
+    "avg": 2.71,
+    "completion": 15.5,
+    "comments": 68,
+    "satisfied": 33,
+    "dissatisfied": 107
+  },
+  {
+    "name": "Enquiry Status",
+    "total": 218,
+    "sat": 47.7,
+    "avg": 3.67,
+    "completion": 59.7,
+    "comments": 40,
+    "satisfied": 104,
+    "dissatisfied": 114
+  },
+  {
+    "name": "IC Change Particulars",
+    "total": 170,
+    "sat": 22.4,
+    "avg": 2.63,
+    "completion": 21.6,
+    "comments": 80,
+    "satisfied": 38,
+    "dissatisfied": 132
+  },
+  {
+    "name": "IC Loss",
+    "total": 209,
+    "sat": 29.2,
+    "avg": 3.03,
+    "completion": 23.5,
+    "comments": 97,
+    "satisfied": 61,
+    "dissatisfied": 148
+  },
+  {
+    "name": "IC Resubmit",
+    "total": 229,
+    "sat": 21.4,
+    "avg": 2.66,
+    "completion": 11.4,
+    "comments": 147,
+    "satisfied": 49,
+    "dissatisfied": 180
+  },
+  {
+    "name": "MyICA Dashboard",
+    "total": 104,
+    "sat": 76.9,
+    "avg": 4.93,
+    "completion": 70,
+    "comments": 5,
+    "satisfied": 80,
+    "dissatisfied": 24
+  },
+  {
+    "name": "Passport Resubmit",
+    "total": 1143,
+    "sat": 28.5,
+    "avg": 2.99,
+    "completion": 30.1,
+    "comments": 341,
+    "satisfied": 326,
+    "dissatisfied": 817
+  },
+  {
+    "name": "Report Passport Damage",
+    "total": 57,
+    "sat": 24.6,
+    "avg": 2.53,
+    "completion": 11.8,
+    "comments": 38,
+    "satisfied": 14,
+    "dissatisfied": 43
+  },
+  {
+    "name": "Report Passport Loss",
+    "total": 23,
+    "sat": 26.1,
+    "avg": 2.87,
+    "completion": 14.3,
+    "comments": 5,
+    "satisfied": 6,
+    "dissatisfied": 17
+  },
+  {
+    "name": "SAVE Apply Visa",
+    "total": 1959,
+    "sat": 50.7,
+    "avg": 3.83,
+    "completion": 57.1,
+    "comments": 338,
+    "satisfied": 994,
+    "dissatisfied": 965
+  },
+  {
+    "name": "SOLAR",
+    "total": 2056,
+    "sat": 60.4,
+    "avg": 4.38,
+    "completion": 58.4,
+    "comments": 200,
+    "satisfied": 1241,
+    "dissatisfied": 815
+  },
+  {
+    "name": "SOLAR+",
+    "total": 3800,
+    "sat": 68.4,
+    "avg": 4.65,
+    "completion": 25.7,
+    "comments": 343,
+    "satisfied": 2600,
+    "dissatisfied": 1200
+  },
+  {
+    "name": "SafeTravel",
+    "total": 1,
+    "sat": 100,
+    "avg": 6,
+    "completion": 0,
+    "comments": 0,
+    "satisfied": 1,
+    "dissatisfied": 0
+  },
+  {
+    "name": "Short-Term Visit Pass Extension",
+    "total": 2545,
+    "sat": 65,
+    "avg": 4.48,
+    "completion": 67.1,
+    "comments": 380,
+    "satisfied": 1653,
+    "dissatisfied": 892
+  },
+  {
+    "name": "eCOA",
+    "total": 4243,
+    "sat": 26.7,
+    "avg": 2.64,
+    "completion": 23.6,
+    "comments": 400,
+    "satisfied": 1131,
+    "dissatisfied": 3112
+  }
 ];
+        const midVolume = 2121.5;
+        const midSat = 50;
+        const maxVolume = 4243;
+        const axisMaxVolume = 4455.15;
+        const axisMinVolume = -106.075;
+        const axisMaxSat = 105;
+        const axisMinSat = -5;
 
-// Calculate max and midpoints
-const maxVolume = Math.max(...servicesData.map(s => s.total));
-const midVolume = maxVolume / 2;
-const midSatisfaction = 50;
+        let currentService = servicesData.find(s => s.name === 'Apply PP') || servicesData[0];
+        let chart = null;
+        let filteredData = [...servicesData];
+        let showLabels = true;
 
-// Determine quadrant for each service
-function getQuadrant(vol, sat) {
-    if (vol > midVolume && sat < midSatisfaction) return 'priority';
-    if (vol > midVolume && sat >= midSatisfaction) return 'maintain';
-    if (vol <= midVolume && sat < midSatisfaction) return 'monitor';
-    return 'observe';
-}
+        function getQuadrant(service) {
+            const highVol = service.total >= midVolume;
+            const highSat = service.sat >= midSat;
 
-function getQuadrantColor(quadrant) {
-    const colors = {
-        priority: '#CC0000',
-        maintain: '#008800',
-        monitor: '#404040',
-        observe: '#0066CC'
-    };
-    return colors[quadrant];
-}
+            if (highVol && !highSat) return 'priority';
+            if (highVol && highSat) return 'maintain';
+            if (!highVol && !highSat) return 'monitor';
+            return 'observe';
+        }
 
-// Prepare chart data
-let currentFilter = 'all';
-let currentMinResponse = 0;
-let showLabels = true;
+        function getQuadrantColor(quadrant) {
+            const colors = {
+                priority: 'rgba(204, 0, 0, 0.8)',      // #CC0000
+                maintain: 'rgba(0, 136, 0, 0.8)',      // #008800
+                monitor: 'rgba(64, 64, 64, 0.8)',      // #404040
+                observe: 'rgba(0, 102, 204, 0.8)'      // #0066CC
+            };
+            return colors[quadrant];
+        }
 
-function prepareChartData() {
-    let filtered = servicesData.filter(s => s.total >= currentMinResponse);
+        function updateDetailPanel(service) {
+            currentService = service;
+            document.getElementById('detailServiceName').textContent = service.name;
 
-    if (currentFilter !== 'all') {
-        filtered = filtered.filter(s => getQuadrant(s.total, s.sat) === currentFilter);
-    }
+            // Quadrant
+            const quadrant = getQuadrant(service);
+            const quadrantText = {
+                priority: 'Priority',
+                maintain: 'Maintain',
+                monitor: 'Monitor',
+                observe: 'Observe'
+            }[quadrant];
 
-    return filtered.map(s => {
-        const quadrant = getQuadrant(s.total, s.sat);
-        return {
-            x: s.total,
-            y: s.sat,
-            r: 8,
-            service: s,
-            quadrant: quadrant,
-            color: getQuadrantColor(quadrant)
-        };
-    });
-}
+            // Volume and satisfaction positions
+            const volPosition = service.total >= midVolume ? 'Above' : 'Below';
+            const satPosition = service.sat >= midSat ? 'Above' : 'Below';
 
-// Create chart
-const ctx = document.getElementById('matrixChart').getContext('2d');
-let chartInstance;
+            const content = `
+                <div class="detail-row">
+                    <span class="detail-label">Total Responses:</span> ${service.total.toLocaleString()}
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Satisfaction Rate:</span> ${service.sat}% (${service.satisfied} satisfied)
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Dissatisfaction Rate:</span> ${(100 - service.sat).toFixed(1)}% (${service.dissatisfied} dissatisfied)
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Average Rating:</span> ${service.avg} / 6.0
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Feedback Comments:</span> ${service.comments.toLocaleString()}
+                </div>
+                <div class="detail-row" style="margin-top: 15px;">
+                    <span class="detail-label">Quadrant Classification:</span> ${quadrantText}
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Volume Position:</span> ${volPosition} midpoint (${Math.round(midVolume).toLocaleString()})
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Satisfaction Position:</span> ${satPosition} 50% threshold
+                </div>
+            `;
+            document.getElementById('detailContent').innerHTML = content;
+        }
 
-// Quadrant background plugin
-const quadrantPlugin = {
-    id: 'quadrantBackground',
-    beforeDraw: (chart) => {
-        const ctx = chart.ctx;
-        const chartArea = chart.chartArea;
-        const xAxis = chart.scales.x;
-        const yAxis = chart.scales.y;
+        function createChart() {
+            const ctx = document.getElementById('scatterChart').getContext('2d');
 
-        const midX = xAxis.getPixelForValue(midVolume);
-        const midY = yAxis.getPixelForValue(midSatisfaction);
+            const datasets = filteredData.map(service => ({
+                label: service.name,
+                data: [{
+                    x: service.total,
+                    y: service.sat,
+                    service: service
+                }],
+                backgroundColor: getQuadrantColor(getQuadrant(service)),
+                borderColor: 'rgba(255, 255, 255, 0.8)',
+                borderWidth: 2,
+                pointRadius: 8,
+                pointHoverRadius: 12
+            }));
 
-        ctx.save();
-
-        // Top-left: Monitor (Low Vol, Low Sat)
-        ctx.fillStyle = 'rgba(64, 64, 64, 0.05)';
-        ctx.fillRect(chartArea.left, midY, midX - chartArea.left, chartArea.bottom - midY);
-
-        // Top-right: Priority (High Vol, Low Sat)
-        ctx.fillStyle = 'rgba(204, 0, 0, 0.05)';
-        ctx.fillRect(midX, midY, chartArea.right - midX, chartArea.bottom - midY);
-
-        // Bottom-left: Observe (Low Vol, High Sat)
-        ctx.fillStyle = 'rgba(0, 102, 204, 0.05)';
-        ctx.fillRect(chartArea.left, chartArea.top, midX - chartArea.left, midY - chartArea.top);
-
-        // Bottom-right: Maintain (High Vol, High Sat)
-        ctx.fillStyle = 'rgba(0, 136, 0, 0.05)';
-        ctx.fillRect(midX, chartArea.top, chartArea.right - midX, midY - chartArea.top);
-
-        // Labels
-        ctx.font = '12px Calibri';
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'top';
-
-        ctx.fillText('Low Vol, High Sat', chartArea.left + 10, chartArea.top + 10);
-        ctx.fillText('High Vol, High Sat', midX + 10, chartArea.top + 10);
-        ctx.fillText('Low Vol, Low Sat', chartArea.left + 10, midY + 10);
-        ctx.fillText('High Vol, Low Sat', midX + 10, midY + 10);
-
-        ctx.restore();
-    }
-};
-
-function createChart() {
-    const data = prepareChartData();
-
-    if (chartInstance) {
-        chartInstance.destroy();
-    }
-
-    chartInstance = new Chart(ctx, {
-        type: 'bubble',
-        data: {
-            datasets: [{
-                label: 'Services',
-                data: data,
-                backgroundColor: data.map(d => d.color + '99'),
-                borderColor: data.map(d => d.color),
-                borderWidth: 2
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    backgroundColor: 'rgba(0, 0, 0, 0.9)',
-                    titleColor: '#ffffff',
-                    bodyColor: '#ffffff',
-                    titleFont: { size: 14, weight: 'bold' },
-                    bodyFont: { size: 13 },
-                    padding: 12,
-                    displayColors: false,
-                    callbacks: {
-                        title: function(items) {
-                            return items[0].raw.service.name;
+            const config = {
+                type: 'scatter',
+                data: { datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    onClick: (evt, elements) => {
+                        if (elements.length > 0) {
+                            const datasetIndex = elements[0].datasetIndex;
+                            updateDetailPanel(filteredData[datasetIndex]);
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                title: (items) => items[0].dataset.label,
+                                label: (item) => {
+                                    const s = item.raw.service;
+                                    return [
+                                        `Total Responses: ${s.total.toLocaleString()}`,
+                                        `Satisfaction: ${s.sat}%`,
+                                        `Avg Rating: ${s.avg} / 6.0`,
+                                        `Comments: ${s.comments.toLocaleString()}`,
+                                        '',
+                                        `Quadrant: ${getQuadrant(s).toUpperCase()}`,
+                                        '',
+                                        'Click for details'
+                                    ];
+                                }
+                            }
                         },
-                        label: function(context) {
-                            const s = context.raw.service;
-                            return [
-                                'Total Responses: ' + s.total.toLocaleString(),
-                                'Satisfaction: ' + s.sat + '%',
-                                'Avg Rating: ' + s.avg + ' / 6.0',
-                                'Comments: ' + s.comments.toLocaleString(),
-                                '',
-                                'Quadrant: ' + context.raw.quadrant.toUpperCase(),
-                                '',
-                                'Click for details'
-                            ];
+                        annotation: {
+                            annotations: {
+                                vline: {
+                                    type: 'line',
+                                    xMin: midVolume,
+                                    xMax: midVolume,
+                                    borderColor: 'rgba(0, 0, 0, 0.3)',
+                                    borderWidth: 2,
+                                    borderDash: [5, 5]
+                                },
+                                hline: {
+                                    type: 'line',
+                                    yMin: midSat,
+                                    yMax: midSat,
+                                    borderColor: 'rgba(0, 0, 0, 0.3)',
+                                    borderWidth: 2,
+                                    borderDash: [5, 5]
+                                },
+                                lowVolLowSat: {
+                                    type: 'box',
+                                    xMin: axisMinVolume,
+                                    xMax: midVolume,
+                                    yMin: axisMinSat,
+                                    yMax: midSat,
+                                    backgroundColor: 'rgba(108, 117, 125, 0.05)',
+                                    borderWidth: 0
+                                },
+                                lowVolHighSat: {
+                                    type: 'box',
+                                    xMin: axisMinVolume,
+                                    xMax: midVolume,
+                                    yMin: midSat,
+                                    yMax: axisMaxSat,
+                                    backgroundColor: 'rgba(0, 123, 255, 0.05)',
+                                    borderWidth: 0
+                                },
+                                highVolLowSat: {
+                                    type: 'box',
+                                    xMin: midVolume,
+                                    xMax: axisMaxVolume,
+                                    yMin: axisMinSat,
+                                    yMax: midSat,
+                                    backgroundColor: 'rgba(220, 53, 69, 0.05)',
+                                    borderWidth: 0
+                                },
+                                highVolHighSat: {
+                                    type: 'box',
+                                    xMin: midVolume,
+                                    xMax: axisMaxVolume,
+                                    yMin: midSat,
+                                    yMax: axisMaxSat,
+                                    backgroundColor: 'rgba(40, 167, 69, 0.05)',
+                                    borderWidth: 0
+                                },
+                                lowVolLabel: {
+                                    type: 'label',
+                                    xValue: midVolume / 2,
+                                    yValue: 5,
+                                    content: ['Low Vol, Low Sat'],
+                                    color: 'rgba(0,0,0,0.3)',
+                                    font: { size: 11 }
+                                },
+                                highVolLabel: {
+                                    type: 'label',
+                                    xValue: midVolume + (maxVolume - midVolume) / 2,
+                                    yValue: 95,
+                                    content: ['High Vol, High Sat'],
+                                    color: 'rgba(0,0,0,0.3)',
+                                    font: { size: 11 }
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: { display: true, text: 'Response Volume', font: { size: 13, weight: 'bold' } },
+                            min: axisMinVolume,
+                            max: axisMaxVolume,
+                            grid: { color: 'rgba(0,0,0,0.05)' },
+                            ticks: {
+                                callback: value => value >= 0 ? value.toLocaleString() : ''
+                            }
+                        },
+                        y: {
+                            title: { display: true, text: 'Satisfaction (%)', font: { size: 13, weight: 'bold' } },
+                            min: axisMinSat,
+                            max: axisMaxSat,
+                            grid: { color: 'rgba(0,0,0,0.05)' },
+                            ticks: {
+                                callback: value => (value >= 0 && value <= 100) ? value + '%' : ''
+                            }
                         }
                     }
                 }
-            },
-            scales: {
-                x: {
-                    title: {
-                        display: true,
-                        text: 'Response Volume',
-                        font: { size: 15, weight: 'bold' },
-                        color: '#000000'
-                    },
-                    ticks: {
-                        font: { size: 12 },
-                        color: '#666666'
-                    },
-                    grid: {
-                        color: 'rgba(0, 0, 0, 0.08)'
-                    }
-                },
-                y: {
-                    title: {
-                        display: true,
-                        text: 'Satisfaction (%)',
-                        font: { size: 15, weight: 'bold' },
-                        color: '#000000'
-                    },
-                    min: 0,
-                    max: 100,
-                    ticks: {
-                        font: { size: 12 },
-                        color: '#666666',
-                        callback: function(value) {
-                            return value + '%';
-                        }
-                    },
-                    grid: {
-                        color: 'rgba(0, 0, 0, 0.08)'
-                    }
-                }
-            },
-            onClick: function(event, elements) {
-                if (elements.length > 0) {
-                    const element = elements[0];
-                    const service = data[element.index].service;
-                    showServiceDetails(service);
-                }
-            }
-        },
-        plugins: [quadrantPlugin]
-    });
-}
+            };
 
-function showServiceDetails(service) {
-    const quadrant = getQuadrant(service.total, service.sat);
-    const panel = document.getElementById('statsPanel');
-    const title = document.getElementById('statsTitle');
-    const content = document.getElementById('statsContent');
+            if (chart) chart.destroy();
+            chart = new Chart(ctx, config);
+        }
 
-    title.textContent = service.name;
+        function applyFilters() {
+            const quadFilter = document.getElementById('quadrantFilter').value;
+            const minResp = parseInt(document.getElementById('minResponseFilter').value);
+            showLabels = document.getElementById('showLabels').checked;
 
-    const dissatisfied = Math.round(service.total * (100 - service.sat) / 100);
-    const satisfied = service.total - dissatisfied;
+            filteredData = servicesData.filter(s => {
+                if (s.total < minResp) return false;
+                if (quadFilter !== 'all' && getQuadrant(s) !== quadFilter) return false;
+                return true;
+            });
 
-    content.innerHTML = `
-        <strong>Performance Metrics:</strong><br>
-        • Total Responses: ${service.total.toLocaleString()}<br>
-        • Satisfaction Rate: ${service.sat}% (${satisfied.toLocaleString()} satisfied)<br>
-        • Dissatisfaction Rate: ${(100 - service.sat).toFixed(1)}% (${dissatisfied.toLocaleString()} dissatisfied)<br>
-        • Average Rating: ${service.avg} / 6.0<br>
-        • Feedback Comments: ${service.comments.toLocaleString()}<br>
-        <br>
-        <strong>Quadrant Classification:</strong><br>
-        • ${quadrant.charAt(0).toUpperCase() + quadrant.slice(1)}<br>
-        <br>
-        <strong>Volume Position:</strong> ${service.total > midVolume ? 'Above' : 'Below'} median (${midVolume.toFixed(0)})<br>
-        <strong>Satisfaction Position:</strong> ${service.sat >= midSatisfaction ? 'Above' : 'Below'} 50% threshold
-    `;
+            createChart();
+        }
 
-    panel.classList.add('active');
-    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-}
+        document.getElementById('quadrantFilter').addEventListener('change', applyFilters);
+        document.getElementById('minResponseFilter').addEventListener('change', applyFilters);
+        document.getElementById('showLabels').addEventListener('change', applyFilters);
 
-// Event listeners
-document.getElementById('quadrantFilter').addEventListener('change', function(e) {
-    currentFilter = e.target.value;
-    createChart();
-});
-
-document.getElementById('minResponseFilter').addEventListener('change', function(e) {
-    currentMinResponse = parseInt(e.target.value);
-    createChart();
-});
-
-document.getElementById('showLabels').addEventListener('change', function(e) {
-    showLabels = e.target.checked;
-    // Label display would require a plugin - keeping simple for now
-});
-
-// Initialize
-createChart();
-</script>
-
+        updateDetailPanel(currentService);
+        createChart();
+    </script>
 </body>
 </html>
