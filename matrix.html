@@ -636,10 +636,21 @@
             return colors[quadrant];
         }
 
-        function updateDetailPanel(service) {
-            currentService = service;
-            document.getElementById('detailServiceName').textContent = service.name;
+        // Accepts one service or an array (when several dots overlap at the clicked spot)
+        function updateDetailPanel(input) {
+            const list = Array.isArray(input) ? input : [input];
+            currentService = list[0];
+            document.getElementById('detailServiceName').textContent =
+                list.length > 1 ? list.length + ' overlapping services at this point' : list[0].name;
+            document.getElementById('detailContent').innerHTML = list.map(function (svc) {
+                const block = buildServiceBlock(svc);
+                return list.length > 1
+                    ? '<div style="margin-bottom:18px;padding-bottom:12px;border-bottom:1px solid #B0D4F1;"><div style="font-weight:bold;font-size:14px;color:#003D7A;margin-bottom:6px;">' + svc.name + '</div>' + block + '</div>'
+                    : block;
+            }).join('');
+        }
 
+        function buildServiceBlock(service) {
             // Quadrant
             const quadrant = getQuadrant(service);
             const quadrantText = {
@@ -685,7 +696,7 @@
                     <span class="detail-label">Satisfaction Position:</span> ${satPosition} 50% threshold
                 </div>
             `;
-            document.getElementById('detailContent').innerHTML = content;
+            return content;
         }
 
         function createChart() {
@@ -711,30 +722,32 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    interaction: { mode: 'point', intersect: true },
                     onClick: (evt, elements) => {
                         if (elements.length > 0) {
-                            const datasetIndex = elements[0].datasetIndex;
-                            updateDetailPanel(filteredData[datasetIndex]);
+                            updateDetailPanel(elements.map(el => filteredData[el.datasetIndex]));
                         }
                     },
                     plugins: {
                         legend: { display: false },
                         tooltip: {
+                            displayColors: false,
                             callbacks: {
-                                title: (items) => items[0].dataset.label,
+                                // One header; when dots overlap, say so and list each service once
+                                title: (items) => items.length > 1
+                                    ? items.length + ' overlapping services'
+                                    : items[0].dataset.label,
                                 label: (item) => {
                                     const s = item.raw.service;
-                                    return [
-                                        `Total Responses: ${s.total.toLocaleString()}`,
-                                        `Satisfaction: ${s.sat}%`,
-                                        `Avg Rating: ${s.avg} / 6.0`,
-                                        `Comments: ${s.comments.toLocaleString()}`,
-                                        '',
-                                        `Quadrant: ${getQuadrant(s).toUpperCase()}`,
-                                        '',
-                                        'Click for details'
+                                    const multi = item.chart.tooltip.dataPoints.length > 1;
+                                    const lines = [
+                                        `Responses: ${s.total.toLocaleString()} | Satisfaction: ${s.sat}%`,
+                                        `Avg Rating: ${s.avg} / 6.0 | Comments: ${s.comments.toLocaleString()}`,
+                                        `Quadrant: ${getQuadrant(s).toUpperCase()}`
                                     ];
-                                }
+                                    return multi ? ['● ' + s.name].concat(lines).concat(['']) : lines;
+                                },
+                                footer: () => 'Click for details'
                             }
                         },
                         annotation: {
